@@ -1,0 +1,66 @@
+'****Include Statments*************
+	Include "mapbasic.def"
+	Include "ICONS.DEF"
+    
+'****Declare Statments*************
+	Declare SUB Main
+
+
+
+
+
+Sub Main()
+	Dim Selectedobj As Object
+	Dim lat, lon, lat2, lon2 As Float
+	Dim cont,n, x As Integer
+	
+	
+	Select * From Coordenadas 'Selecciona toda la tabla
+	x = SelectionInfo(SEL_INFO_NROWS)'para obteer el número de coordenadas
+	
+	'Note x 'Muestra al usuario el número de coordenadas
+	
+
+	'cont = Select COUNT(*) From Coordenadas
+	'Note cont
+	n=1
+	While n < x
+		Select * From Coordenadas Where RowID = n
+		Browse * From Selection
+
+		'Map From selection 
+
+		Selectedobj = Selection.obj
+
+		'Close Table Selection  'mirar como cerrar las tablas que se van abriendo
+		'Selectedobj = Coordenadas.obj 
+
+		'lat = CentroidY(Selectedobj) 'Se obtiene coordenadas del punto
+		'lon = CentroidX(Selectedobj) 
+
+		lat = ObjectGeography(Selectedobj,OBJ_GEO_POINTY) 'Otra manera de obtener las coordenadas de un punto
+		lon = ObjectGeography(Selectedobj,OBJ_GEO_POINTX)
+
+		'Note "Latitude: "+lat+" Longitude: "+lon 'Imprime las coordenadas en un "Promp"
+
+		Select * From Coordenadas Where RowID = n+1
+		Browse * From Selection
+		Selectedobj = Selection.obj
+		lat2 = ObjectGeography(Selectedobj,OBJ_GEO_POINTY) 'Otra manera de obtener las coordenadas de un punto
+		lon2 = ObjectGeography(Selectedobj,OBJ_GEO_POINTX)
+		'Note "Latitude: "+lat2+" Longitude: "+lon2 'Imprime las coordenadas en un "Promp"
+	
+		Insert Into Coordenadas (obj) Values (CreateLine(lon,lat,lon2,lat2))
+		n = n + 1
+	Wend
+	Select * From Coordenadas Where id = 0
+	Browse * From Selection
+	Objects Combine  
+	Map From Coordenadas
+	'DDEInitiate("MapInfo", "C:\Users\map\Downloads\Auto Split\Auto_SplitPolyline.mbx") 
+
+End Sub
+
+
+
+

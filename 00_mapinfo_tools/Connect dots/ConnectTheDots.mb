@@ -1,0 +1,217 @@
+'*****************************************************************************
+'       Copyright (c) 1995, MAPINFO CORPORATION
+'       All rights reserved.
+'       Confidential Property of MAPINFO CORPORATION
+'
+' $Workfile:   ConnectTheDots.mb  $
+' $Revision:   1.0  $
+' $Author:   DRESSEL  $
+' $Date:   21 September 1999 16:14:56  $
+'
+' Module Description:
+'
+' Convert selected points into a region.
+'
+' Revision History:
+'
+'    Rev 1.0   21 September 1999 16:14:56   DRESSEL
+' Initial revision.
+'
+'
+'*****************************************************************************
+Include "MapBasic.def"
+' Include a file that lets us use the "auto-load" library                 
+Include "..\Inc\auto_lib.def"                                             
+
+Declare Sub Main
+Declare Sub ConnectTheDots
+Declare Sub About
+Declare Sub GoodBye
+
+Define TYPEPOLYGON 1
+Define TYPEPOLYLINE 2
+
+Global iObjectType As Integer
+Global pPen As Pen
+Global bBrush As Brush
+Global lDeletePoints As Logical
+
+Sub Main
+
+  OnError Goto HandleError
+
+  gsAppDescription = "Connect the Dots"                                             
+  gsAppFilename = "ConnectTheDots.mbx"                                            
+
+  Create Menu "&Connect the Dots" As                                                
+    "&Connect the Dots..."  Calling ConnectTheDots,
+    "(-",                                      
+    "&About  Connect the Dots... "  Calling About,        
+    "E&xit Connect the Dots" Calling Goodbye             
+
+  If SystemInfo(SYS_INFO_MIVERSION) >= 450 Then
+    Call set_tools_menu("&Connect the Dots")                                          
+  Else
+    Create Menu "&Tools" As
+      "&Connect the Dots" As "&Connect the Dots"
+    Alter Menu Bar Add "&Tools"
+  End If
+
+  iObjectType = TYPEPOLYGON
+  pPen = MakePen(1, 2, BLACK)
+  bBrush = MakeBrush(2, RED, WHITE)
+  lDeletePoints = FALSE
+
+  Exit Sub
+
+HandleError:
+  Note "Main: " + Error$()
+  Resume Next
+
+End Sub                                                                   
+
+Sub ConnectTheDots
+
+  OnError Goto HandleError
+
+  Dim oObject As Object
+  Dim sTableName, sCmd As String
+  Dim iNodes As Integer
+
+  If SelectionInfo(SEL_INFO_NROWS) > 0 Then
+    sTableName = SelectionInfo(SEL_INFO_TABLENAME)
+    If TableInfo(sTableName, TAB_INFO_MAPPABLE) Then
+      If Not TableInfo(sTableName, TAB_INFO_READONLY) Then
+
+        Dialog  
+          Title "Connect the Dots"
+        Control StaticText
+          Title "Create a:"
+          Position 10, 10
+        Control RadioGroup
+          Title "Poly&gon;Poly&line"
+          Value iObjectType
+          Into iObjectType
+          Position 45, 10
+        Control StaticText
+          Title "style with:"
+          Position 10, 40
+        Control PenPicker
+          Value pPen
+          Into pPen
+          Position 45, 40
+        Control StaticText
+          Title "or"
+          Position 68, 40
+        Control BrushPicker
+          Value bBrush
+          Into bBrush
+          Position 78, 40
+        Control CheckBox
+          Title "&Delete points when done"
+          Value lDeletePoints
+          Into lDeletePoints
+          Position 10, 70
+        Control OKButton Title  "&OK"
+        Control CancelButton Title  "&Cancel"
+
+        If CommandInfo(CMD_INFO_DLG_OK) Then 
+
+          sCmd = "Set " + TableInfo(sTableName, TAB_INFO_COORDSYS_CLAUSE) 
+          Run Command sCmd
+      
+          Select * From Selection Into ~work
+
+          If iObjectType = TYPEPOLYGON Then
+            Create Region Into Variable oObject 0 Pen pPen Brush bBrush
+          Else
+            Create Pline Into Variable oObject 0 Pen pPen
+          End If
+
+          iNodes = 0
+
+          Fetch First From ~work
+          Do While Not EOT(~work)
+            If Str$(~work.obj) = "Point" Then
+              Alter Object oObject Node Add (CentroidX(~work.obj), CentroidY(~work.obj)) 
+              iNodes = iNodes + 1
+            End If
+            Fetch Next From ~work
+          Loop 
+
+          If lDeletePoints Then
+            Delete From ~work
+          End If
+
+          Close Table ~work
+
+          If iNodes > 0 Then
+            Insert Into sTableName (Object) Values (oObject)
+          Else
+            Note "No points found in selection."
+          End If
+
+        End If
+
+      Else
+        Note "Selected points are in a read-only table. Make table editable and try again."
+      End If
+
+    Else
+      Note "Selected records are in a non-mapable table. Make tabale mapable and try again."
+    End If
+
+  Else
+    Note "Select some points and try again."
+  End If
+
+  Exit Sub
+
+HandleError:
+  Note "ConnectTheDots: " + Error$()
+  Resume Next
+
+End Sub                                                                   
+
+Sub About                                                                  
+
+  OnError Goto HandleError
+
+  Dialog
+     Title "About Connect the Dots Version 1.0"                                   
+     Control StaticText
+        Title "Creates a polygon or polyline from the points selected" Position 10, 10         
+     Control StaticText
+        Title "in the order they appear in the source table. Inserts" Position 10, 20
+     Control StaticText
+        Title "new object into source table. Ignores non-point and" Position 10, 30
+     Control StaticText
+        Title "deleted objects. Optionally deletes source objects." Position 10, 40
+     Control StaticText
+        Title "" Position 10, 50
+     Control Button Title "&Auto-Load..." Calling HandleInstallation Position 45, 100 Width 45
+     Control OKButton Title  "&OK" Position 95, 100 Width 45                
+
+  Exit Sub
+
+HandleError:
+  Note "About: " + Error$()
+  Resume Next
+
+End Sub                                                                    
+
+Sub GoodBye                                                                
+
+  OnError Goto HandleError
+
+  End Program                                                              
+
+  Exit Sub
+
+HandleError:
+  Note "GoodBye: " + Error$()
+  Resume Next
+
+End Sub                                                                    
+
+' End of File

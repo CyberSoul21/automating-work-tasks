@@ -1,0 +1,17 @@
+--------------------------------------------Indexar Automático-------------------------------------------------------------------
+Herramienta para actualizar los campos de las vías usando los archivos exportados desde la aplicación "Georreferenciar", para su correcto
+funcionamiento se debe colocar en el código la dirección de la carpeta donde se encuentre alojada la aplicación "Georreferenciar", para que
+tenga acceso a los archivos exportados de dicha aplicación.
+
+La aplicación solicita el nombre del archivo sin el ".txt", el cual debe coincidir con el exportado desde "Georreferenciar", y debe estar
+seleccionada la vía que se desea actualizar. La aplicación coloca un id a cada registro y con esto concatena los registros.
+
+
+
+
+*Mejoras: Crear una interfaz donde el usuario seleccione el alojamiento de la aplicación georreferenciar y no tenga que hacerlo desde código.
+
+
+ 
+Ing Wilson J Almario R.
+Wavecomm Corporation.

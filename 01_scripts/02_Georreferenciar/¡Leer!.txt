@@ -1,0 +1,51 @@
+-------------------------------------------------------Georreferenciar--------------------------------------------------------------------------------
+Date: January - 2015
+El programa es una herramienta de ayuda para la georreferenciación de las vías según el estandar de Wavecomm Corporation. Dibujado un segmento 
+de línea, el cual representa de la realidad una vía, calle, carretera de campo o vías nacionales; deben de tener una longitud 1 Km para vias 
+nacionales y 0.1 Km para campo. Así dado un punto A y un punto B con determinada distancia, el segmento de línea que une estos dos puntos debe 
+estar dividido según la longitud correspondiente, ya sea para campo o vías nacionales. 
+
+Deben ser georreferenciadas así: Kilometro x A - B y Kilometro x B - A; por ejemplo si el segmento que une el punto A y B es de 20 Km, deben de
+realizarce 10 registros, Kilometro x A - B y otros 10 Kilometro x B - A. En el software Mapinfo deben de dibujarse los segmentos del punto 
+A hasta B en orden ya sea de A hasta B o de B hasta A sin que se pierda la secuencia, para no tener inconvenientes al momento de asignarles 
+el ID y utilizar la herramienta, si no se hace así la herramienta no será útil ya que quedaría mal.
+
+Ejemplo: Si la distancia de A hasta B es de 10 Km deben de existir 10 registros con la siguiente secuencia:
+
+ID;NAME
+1;Kilometro 1 A - B
+2;Kilometro 2 A - B
+3;Kilometro 3 A - B
+4;Kilometro 4 A - B
+5;Kilometro 5 A - B
+6;Kilometro 5 B - A
+7;Kilometro 4 B - A
+8;Kilometro 3 B - A
+9;Kilometro 2 B - A
+10;Kilometro 1 B - A
+
+Normalmente esta tarea se realiza manualmente pero con la ayuda de esta herramienta se puede automatizar. El programa solicita los nombres de 
+los puntos A y B respectivamente, el  nombre del archivo final y el número de registros, por último exporta un archivo .txt con el Id y el 
+nombre separados por ";" (punto y coma). Luego en Mapinfo se concatena la información con ayuda del ID.
+
+1. El programa solicita el nombre del punto A y el puto B
+
+   Digite Punto A:
+   Digite Punto B:
+
+2. Digitar Nombre del archivo .txt final
+
+   Nombre del archivo:
+
+3. Digitar número de registros.
+
+4. Se cierra el programa y en la carpeta donde esta alojado se encuentra un archivo .txt con el nombre que se le ha asignado en el punto 2.
+
+
+*Mejoras: 1-Realizar interfaz gráfica usando Java.
+
+
+
+Ing Wilson J Almario R.
+Wavecomm Corporation.
+ 

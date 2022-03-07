@@ -1,0 +1,12 @@
+*Auto Split Plyline: Seleccionando una polylínea, con esta herramienta se puede dividirl en n-ésimas polylineas de 1 km de longitud. 
+L > 1 donde L es la longitud de la polylínea.
+
+*Para Usarla agregaral gestor de aplicaciones de Mapinfo.
+
+
+*Mejoras: 1-El usuario digite la longitud deseada. 
+          2-Cuando exista un error topologico y no se pueda divir la polylínea, no quede en un bucle finito.
+	  3-Desarrollar en un entorno libre.
+
+		
+   

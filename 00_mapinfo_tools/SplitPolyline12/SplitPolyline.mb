@@ -1,0 +1,375 @@
+'***********************************************
+'Nathan Woodrow
+'For Mapinfo 4.0 and higher (Tested with 8.5 only)
+'18/08/2006
+'
+'Moves along Polyline to a user specified distance and places a new node,
+'then uses a function to split the line at the node just added.
+'Note: Only works for single segment Polylines(not combined)
+
+'Contains code taken from the LINEDIR.MBX utility created by Jennifer Bailey of MapInfo Technical Support
+'
+'Version 1.2
+'Changlog
+'	-Fixed bug with no. of sections when selecting a line
+'	-Fixed problem when switching line direction and spliting
+'Version 1.1
+'Changlog
+'	- works with all projections (Spherical only)
+'	- improved error handling, negative or invalid values entered etc.
+'	- uses the measurement unit of the current window when prompting for a distance.
+'	- automatic temporary linestyle change to show direction of selected line. 
+'	- added 'Reverse Line' button to dialog for easier line direction changing.
+'Version 1.0
+'	- initial release
+
+'****Include Statments*************
+	Include "mapbasic.def"
+	Include "ICONS.DEF"
+    
+'****Declare Statments*************
+	Declare SUB Main
+	Declare SUB SplitLine(Dist as Float)
+	Declare SUB SplitLinedlg
+	Declare SUB End_Program
+	Declare SUB About
+	Declare SUB Help
+	Declare SUB ChgLineDir
+
+type nodelist
+  x as float
+  y as float
+end type    
+
+Type objectstyle
+	Width as Integer
+	Patten as Integer
+	Color as integer
+End Type
+	
+Global objectstyle as objectstyle 
+Global prevPenstyle as Pen
+Global Penstyle as Pen
+Global sobj as object
+Global srow,i,numnodes,j,k,bnode,ID as integer
+Global begx,begy,endx,endy as float
+Global frow,Reversed as logical
+Global nlist(1) as nodelist
+Global tabname as string
+Global objectlength As Float
+Global Selectedobj As Object
+
+Sub Main()
+	Reversed = False
+	Create Menu "Split Polyline" as
+		"Split Polyline" Calling SplitLinedlg,
+		"Help" calling help,
+		"About" Calling About,
+		"Exit" Calling End_Program
+	Alter Menu Bar Add "Split Polyline"
+	Alter ButtonPad ID 3
+		Add
+		PushButton
+		ID 1
+		Icon MI_ICON_ADD_NODE
+			HelpMsg "\nSplit selected polyline at specified length"
+		Calling SplitLinedlg
+		Show
+	
+End Sub
+
+Sub SplitLine(Dist As Float)
+	Dim x1, y1, x2, y2, A, x, y, Length, ratio As Float
+	Dim n1, n2, ns As Integer
+	Dim units As String
+	units = MapperInfo(Frontwindow(),MAPPER_INFO_DISTUNITS)
+	
+	If Reversed = True then 
+		Selectedobj = Sobj
+		Reversed = False
+	Else
+		Selectedobj = Selection.obj
+	End IF
+	
+	'Check to make sure user has not entered number longer then the length
+	'of the selected object
+		If Dist > ObjectLen(Selectedobj, units) Then
+			Note "Distance entered is longer than total polyline length"
+			Alter Object Selectedobj Info OBJ_INFO_PEN, prevPenstyle
+			Update Selection Set obj  = Selectedobj where RowID = ID
+			Call SplitLinedlg
+			Exit Sub
+		End If
+		
+		If Dist < 0 or Dist = 0.00 then
+			Note "Distance entered cannot be less than or equal to zero"
+			Alter Object Selectedobj Info OBJ_INFO_PEN, prevPenstyle
+			Update Selection Set obj  = Selectedobj where RowID = ID
+			Call SplitLinedlg
+			Exit Sub
+		End If
+	
+	ID = Selection.RowID
+	n1 = 1
+	n2 = 2
+	x1 = ObjectNodeX(Selectedobj, 1, n1)
+	y1 = ObjectNodeY(Selectedobj, 1, n1)
+	x2 = ObjectNodeX(Selectedobj, 1, n2)
+	y2 = ObjectNodeY(Selectedobj, 1, n2)
+	Length = Distance(x1, y1, x2, y2, units)
+	ratio = Dist / Length
+	Do While Length - Dist < 0
+		Dist = Dist - Length
+		n1 = n1 + 1
+		n2 = n2 + 1
+		x1 = ObjectNodeX(Selectedobj, 1, n1)
+		y1 = ObjectNodeY(Selectedobj, 1, n1)
+		x2 = ObjectNodeX(Selectedobj, 1, n2)
+		y2 = ObjectNodeY(Selectedobj, 1, n2)
+		Length = Distance(x1, y1, x2, y2, units)
+	Loop
+	ratio = Dist / Length
+	x = x1 + (x2 - x1) * ratio
+	y = y1 + (y2 - y1) * ratio
+	Alter Object Selectedobj Node Add Position 1,n2 (x,y)
+	Alter Object Selectedobj Info OBJ_INFO_PEN, prevPenstyle
+	Update Selection Set obj  = Selectedobj where RowID = ID
+	Objects Pline Split At Node n2 Into Table Selection
+	Close table Selection
+	Exit Sub
+
+End Sub
+
+Sub SplitLinedlg()
+	Onerror goto Errorsection
+	Dim Distenter As Float
+	Dim units As String
+	Dim Noofsections as Smallint
+	'Make sure something is selected
+	If SelectionInfo(SEL_INFO_NROWS) = 0 Then
+	Note "Please select a polyline or line first"
+		Exit Sub
+	End If
+	
+	If SelectionInfo(SEL_INFO_NROWS) > 1 Then
+	Note "Please select only one line or polyline before splitting"
+		Exit Sub
+	End If
+	
+	Do case Objectinfo(Selection.obj,OBJ_INFO_TYPE)
+		Case OBJ_TYPE_PLINE
+			Noofsections = Objectinfo(Selection.obj, OBJ_INFO_NPOLYGONS)
+		Case OBJ_TYPE_LINE
+			Noofsections =  1
+		Case Else
+			Note "Selection is not a polyline or a line"
+			Exit Sub
+	End Case
+		
+	IF Noofsections > 1  then
+		Note "Cannot split - selected line contains more than one section"
+		Exit Sub
+	End if 
+	
+	ID = Selection.RowID
+	units = MapperInfo(Frontwindow(),MAPPER_INFO_DISTUNITS)
+
+	objectstyle.Width = StyleAttr(Objectinfo(Selection.obj, OBJ_INFO_PEN), PEN_WIDTH)
+	objectstyle.Patten = StyleAttr(Objectinfo(Selection.obj, OBJ_INFO_PEN), PEN_PATTERN)
+	objectstyle.Color = StyleAttr(Objectinfo(Selection.obj, OBJ_INFO_PEN), PEN_COLOR)
+	
+	prevPenstyle = MakePen(objectstyle.Width,objectstyle.Patten,objectstyle.Color)
+	Penstyle =  MakePen(objectstyle.Width,54,objectstyle.Color)
+		
+	Selectedobj = Selection.obj
+	
+	objectlength = ObjectLen(Selectedobj, units)
+	
+	'If selected object is a line, converts to a polyline then addes a node
+	If ObjectInfo(Selectedobj, OBJ_INFO_TYPE) = OBJ_TYPE_LINE Then
+		Selectedobj = ConverttoPline(Selectedobj)
+	End If
+	'Make sure the selected item is a polyline
+	If ObjectInfo(Selectedobj, OBJ_INFO_TYPE) <> OBJ_TYPE_PLINE Then
+		Note "Selection is not a polyline or line"
+		Exit Sub
+	End If
+	
+	Alter Object Selectedobj
+		Info OBJ_INFO_PEN, PenStyle
+		
+	Update Selection Set obj  = Selectedobj where RowID = ID
+	
+	Dialog
+		Width 185 Height 75
+		Title "Split Polyline"
+			Control StaticText
+				Title "Length of Selected Polyline:"
+					ID 1
+					Position 5, 5
+			Control StaticText
+				Title Str$(objectlength) + " " + units
+				ID 1
+				Position 109, 5
+			Control StaticText
+				Title "Distance Along Polyline to Split:"
+				Position 5, 25
+			Control StaticText
+				Title "(" + units + ")"
+				Position 15, 35
+			Control EditText
+				ID 2
+				Width 65
+				Into Distenter
+				Position 109, 23
+			Control Button
+				Title "Reverse Line"
+				Calling ChgLineDir
+			Control OKButton
+			Control CancelButton
+	If CommandInfo(CMD_INFO_DLG_OK) Then
+		Call SplitLine(Distenter)
+	Else
+		Alter Object Selectedobj Info OBJ_INFO_PEN, prevPenstyle
+		Update Selection Set obj  = Selectedobj where RowID = ID
+	End If
+	
+	Exit Sub
+Errorsection:
+	Distenter = 0.00
+	Call SplitLine(Distenter)
+End Sub
+
+Sub About()
+	Dialog
+		Title "About"
+		Width 107 Height 129
+		Control StaticText
+			Position 11, 5
+			Width 95 Height 10
+			Title "Split Polyline by Distance"
+		Control StaticText
+			Position 33, 20
+			Width 96 Height 10
+			Title "Created by"
+		Control StaticText
+			Position 22, 30
+			Width 96 Height 10
+			Title "Nathan Woodrow"
+		Control StaticText
+			Position 11, 40
+			Width 91 Height 10
+			Title "GIS/Assets Support Officer"
+		Control StaticText
+			Position 16, 50
+			Width 75 Height 10
+			Title "Warwick Shire Council"
+		Control StaticText
+			Position 28, 60
+			Width 75 Height 10
+			Title "QLD, Australia"
+		Control StaticText
+			Position 18, 75
+			Width 75 Height 10
+			Title "Credit to Jennifer Bailey"
+		Control StaticText
+			Position 10, 85
+			Width 95 Height 10
+			Title "MapInfo Technical Support"
+		Control StaticText
+			Position 34, 95
+			Width 95 Height 10
+			Title "For Linedir"
+		Control OKButton
+			Position 27, 108
+			Width 53 Height 15
+	If CommandInfo(CMD_INFO_DLG_OK) Then
+		Exit Sub
+	End If
+End Sub
+
+Sub Help()
+	Dialog Title "Help" 
+	Width 238 Height 116
+	Control StaticText
+	Position 11,5 
+	Width 216 Height 86 
+	Title "This is a program to split a polyline at a user specified distance from the start of the line." + Chr$(13) +  Chr$(13) + "The Split Polyline tool can also be accessed via a tool added to the 'Tools' buttonpad." + Chr$(13) + Chr$(13) + "Because it measures from the start of selected polyline, the selected line is temporarily changed to show its direction. A button has been added to the dialog to  reverse the direction of the selected line if needed."
+	Control OKButton 
+	Position 93,96 
+	Width 53 Height 15
+	If CommandInfo(CMD_INFO_DLG_OK) Then
+		Exit Sub
+	End If
+End Sub
+
+'The following routine is taken from the LINEDIR.MBX utility created by Jennifer Bailey of MapInfo Technical Support
+sub ChgLineDir
+  srow = SelectionInfo(sel_info_nrows)
+  if srow = 0 then
+    note "No lines were selected."
+  else
+    tabname = SelectionInfo(sel_info_tablename)
+    if TableInfo(tabname,tab_info_readonly) = True then
+	dialog
+	  title "Error"
+	  control statictext
+	    position 10,10
+	    title "The table you selected from is read-only. If you are selecting"
+	  control statictext
+	    position 10,20
+	    title "from a StreetInfo table, you must close the 'S' file and open"
+	  control statictext
+	    position 10,30
+	    title "the 'S1' file. Otherwise, make sure that the table you are"
+	  control statictext
+	    position 10,40
+	    title "selecting from is not located on a read-only drive or is not"
+	  control statictext
+	    position 10,50
+	    title "marked as a read-only file." 
+	  control OKButton
+      exit sub
+    end if
+  end if
+  frow = True
+  for i = 1 to srow
+    if frow = True then
+      fetch first from selection
+    else
+      fetch next from selection
+    end if
+    sobj = selection.obj
+    if str$(sobj) = "line" then
+      begx = ObjectGeography(sobj,obj_geo_linebegx)
+      begy = ObjectGeography(sobj,obj_geo_linebegy)
+      endx = ObjectGeography(sobj,obj_geo_lineendx)
+      endy = ObjectGeography(sobj,obj_geo_lineendy)
+	  alter object sobj geography obj_geo_linebegx,endx
+	  alter object sobj geography obj_geo_linebegy,endy
+	  alter object sobj geography obj_geo_lineendx,begx
+	  alter object sobj geography obj_geo_lineendy,begy
+      update selection set obj=sobj where rowid = i
+    end if
+    if str$(sobj)="polyline" then
+	  numnodes = ObjectInfo(sobj,obj_info_npolygons+1)
+      redim nlist(numnodes)
+	  for j = 1 to numnodes
+	    nlist(j).x = ObjectNodeX(sobj,1,j)
+ 	    nlist(j).y = ObjectNodeY(sobj,1,j)
+	  next
+	  bnode = numnodes
+	  for k = 1 to numnodes
+	    alter object sobj node set position 1,k (nlist(bnode).x,nlist(bnode).y)
+	    bnode = bnode - 1
+	  next
+	  update selection set obj = sobj where rowid = i
+    end if
+    frow = False
+  next
+  Reversed = True
+end sub
+
+Sub End_Program()
+	End Program
+End Sub

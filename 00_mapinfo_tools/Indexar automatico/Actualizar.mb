@@ -1,0 +1,51 @@
+'****Include Statments*************
+	Include "mapbasic.def"
+	Include "ICONS.DEF"
+
+'****Declare Statments*************
+	Declare SUB Main
+	Declare SUB Update
+
+
+Global file_name,directory,route_file As String
+
+
+
+Sub Main()
+	
+	Dialog
+		Title "Update"
+		Control StaticText
+		Title "Enter table's name:"
+		Control EditText
+		Into file_name
+		Control OKButton
+		Title "Update"
+		Position 30, 30
+		Control CancelButton
+		Position 90, 30
+
+		If CommandInfo(CMD_INFO_DLG_OK	) Then
+			directory = "C:\Users\R&D ENGINNER\Desktop\Georreferenciar\"
+			route_file = directory + file_name + ".txt"
+			Call Update()
+		End If
+			
+
+
+End Sub
+
+Sub Update()
+	Dim route_file2 As String
+       Update Selection Set ID = rowid
+	route_file2 = directory + file_name + ".TAB"
+	Note route_file
+       Register Table route_file  TYPE ASCII Delimiter 59 Titles Charset "WindowsLatin1" Into route_file2
+   Open Table route_file2
+     Browse * From file_name
+  Add Column "Selection" (NAME )From file_name Set To NAME Where COL1 = COL1 
+    Browse * From Selection
+
+End Sub
+
+

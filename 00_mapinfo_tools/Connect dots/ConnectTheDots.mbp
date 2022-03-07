@@ -1,0 +1,4 @@
+[Link] 
+Application=ConnectTheDots.mbx 
+Module=ConnectTheDots.mbo
+Module=..\Lib\auto_lib.mbo
